@@ -1,0 +1,234 @@
+Sub CompleteMacroWithFilterSort()
+    Dim LastCol As Long
+    Dim ws As Worksheet
+    Dim filterRange As Range
+    Dim visibleRange As Range
+    
+    ' Set the worksheet where you want to add filters
+    Set ws = ThisWorkbook.Sheets("Sheet1") ' Change "Sheet1" to your sheet's name
+    
+    ' Find the last column with data
+    LastCol = ws.Cells(1, ws.Columns.Count).End(xlToLeft).Column
+    
+    ' Apply filters to all columns in the header row
+    ws.Range(ws.Cells(1, 1), ws.Cells(1, LastCol)).AutoFilter
+    
+    ' Delete and set column widths
+    ws.Columns("A:P").Delete Shift:=xlToLeft
+    ws.Columns("A:A").ColumnWidth = 15.29
+    ws.Columns("B:B").ColumnWidth = 16.71
+    ws.Columns("C:C").ColumnWidth = 25
+    ws.Columns("D:D").ColumnWidth = 16
+    ws.Columns("E:E").ColumnWidth = 20.43
+    ws.Columns("F:F").ColumnWidth = 23
+    ws.Columns("G:G").ColumnWidth = 19.57
+    ws.Columns("H:H").ColumnWidth = 15.43
+    
+    ' Freeze the top row
+    ws.Range("A2").Select
+    ActiveWindow.FreezePanes = True
+    
+    ' Set the filter range for column F
+    Set filterRange = ws.Range("F1:F" & ws.Cells(ws.Rows.Count, "F").End(xlUp).Row)
+    
+    ' Clear any existing filters
+    ws.AutoFilterMode = False
+    
+    ' Apply a filter to show only rows not containing "CHECK#"
+    filterRange.AutoFilter Field:=1, criteria1:="<>*CHECK#*", Operator:=xlAnd
+    
+    ' Copy visible (filtered) cells to a new range
+    On Error Resume Next
+    Set visibleRange = filterRange.Offset(1, 0).Resize(filterRange.Rows.Count - 1).SpecialCells(xlCellTypeVisible)
+    On Error GoTo 0
+    
+    ' If visibleRange is not empty, delete those rows
+    If Not visibleRange Is Nothing Then
+        Application.DisplayAlerts = False
+        visibleRange.EntireRow.Delete
+        Application.DisplayAlerts = True
+    End If
+    
+    ' Clear the filter from column F
+    ws.AutoFilterMode = False
+    
+    ' Sort the filtered data in column F in ascending order
+    filterRange.Sort Key1:=filterRange, Order1:=xlAscending, Header:=xlYes
+    
+    ' Find the last row with data in column F
+    Dim lastRow As Long
+    Dim i As Long
+    lastRow = ws.Cells(ws.Rows.Count, "F").End(xlUp).Row
+    
+    ' Insert a new column after column F
+    ws.Columns("G:G").Insert Shift:=xlToRight, CopyOrigin:=xlFormatFromLeftOrAbove
+    
+    ' Rename the header of the new column
+    ws.Cells(1, "G").Value = "ID"
+    
+    ' Loop through each row with data in column F
+    For i = 2 To lastRow ' Assuming data starts from row 2
+        ' Modify the data in column F and place it in the new column (G)
+        ws.Cells(i, "G").Value = Mid(ws.Cells(i, "F").Value, 8, Len(ws.Cells(i, "F").Value) - 14)
+    Next i
+    
+    ' Find the last row in the column G after insertion
+    Dim lastRowAdd5 As Long
+    Dim insertValues As Variant
+    Dim currentValue As Long
+    Dim iID As Long
+    
+    ' Set the worksheet to work with
+    Set ws = ThisWorkbook.Sheets("Sheet1") ' Change "Sheet1" to your sheet's name
+    lastRowAdd5 = ws.Cells(ws.Rows.Count, "G").End(xlUp).Row
+    
+    ' Values to insert
+    insertValues = Array(20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000, 100000)
+    
+    ' Loop through each value to insert
+    For iID = LBound(insertValues) To UBound(insertValues)
+        currentValue = insertValues(iID)
+        ' Loop through the rows in reverse order
+        For rowIdx = lastRowAdd5 To 2 Step -1
+            If ws.Cells(rowIdx, "G").Value <= currentValue Then
+                ' Insert rows if condition is met
+                ws.Rows(rowIdx + 1).Resize(5).Insert Shift:=xlDown
+                lastRowAdd5 = lastRowAdd5 + 5
+                Exit For
+            End If
+        Next rowIdx
+    Next iID
+    
+    ' Set the worksheet to work with
+    Set ws = ThisWorkbook.Sheets("Sheet1") ' Replace "Sheet1" with your sheet's name
+    
+    ' Criteria ranges for AutoFilter and sorting
+    Dim ranges() As Variant
+    ranges = Array(">=10000", "<=20000", ">=20000", "<=30000", ">=30000", "<=40000", _
+                   ">=40000", "<=50000", ">=50000", "<=60000", ">=60000", "<=70000", _
+                   ">=70000", "<=80000", ">=80000", "<=90000", ">=90000", "<=100000", _
+                   ">=100000", "<=400000")
+    
+    ' Loop through the ranges
+    Dim iFF As Integer
+    For iFF = LBound(ranges) To UBound(ranges) Step 2
+        Dim criteria1 As String
+        Dim criteria2 As String
+        
+        criteria1 = ranges(iFF)
+        criteria2 = ranges(iFF + 1)
+        
+        ' Apply AutoFilter based on criteria
+        ws.Range("A1:G" & ws.Cells(Rows.Count, 1).End(xlUp).Row).AutoFilter Field:=7, criteria1:=criteria1, Operator:=xlAnd, criteria2:=criteria2
+        
+        ' Clear any previous sorting
+        ws.AutoFilter.Sort.SortFields.Clear
+        
+        ' Sort the filtered data in column A in ascending order
+        ws.AutoFilter.Sort.SortFields.Add Key:=ws.Range("A2:A" & ws.Cells(Rows.Count, 1).End(xlUp).Row), _
+            SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
+        
+        ' Apply the sorting
+        With ws.AutoFilter.Sort
+            .Header = xlYes
+            .MatchCase = False
+            .Orientation = xlTopToBottom
+            .SortMethod = xlPinYin
+            .Apply
+        End With
+        
+        ' Clear the AutoFilter
+        ws.AutoFilterMode = False
+    Next iFF
+    
+    ' Set the worksheet to work with
+    Set ws = ThisWorkbook.Sheets("Sheet1") ' Change "Sheet1" to your sheet's name
+    
+    ' Initialize variables for inserting empty rows
+        Dim lastRowBC As Long
+    Dim iBC As Long
+    
+    ' Find the last row with data in column A
+    lastRowBC = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    
+    ' Loop through the rows in reverse order
+    For iBC = lastRowBC To 3 Step -1 ' Start from the second row (assuming header is in row 1)
+        If ws.Cells(iBC, "A").Value <> ws.Cells(iBC - 1, "A").Value And Trim(ws.Cells(iBC, "A").Value) <> "" Then
+            ' Insert rows if condition is met
+            ws.Rows(iBC).Resize(5).Insert
+        End If
+    Next iBC
+    
+    ' Set the worksheet to work with
+    Set ws = ThisWorkbook.Sheets("Sheet1") ' Change "Sheet1" to your sheet's name
+    
+    ' Initialize variables for handling empty rows
+    Dim lastRowKMER As Long
+    Dim iKMER As Long
+    Dim emptyRowCount As Long
+    
+    ' Find the last row with data in column A
+    lastRowKMER = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
+    emptyRowCount = 0
+    
+    ' Loop through the rows in reverse order
+    For iKMER = lastRowKMER To 2 Step -1
+        If Trim(ws.Cells(iKMER, "A").Value) = "" Then
+            ' Count consecutive empty rows
+            emptyRowCount = emptyRowCount + 1
+            If emptyRowCount > 5 Then
+                ' Delete rows if more than 5 consecutive empty rows
+                ws.Rows(iKMER).Delete Shift:=xlUp
+            End If
+        Else
+            ' Reset the empty row count
+            emptyRowCount = 0
+        End If
+    Next iKMER
+    
+    ' Set the worksheet to work with
+    Set ws = ThisWorkbook.Sheets("Sheet1") ' Change "Sheet1" to your sheet's name
+    
+    ' Initialize variables for sum calculation and insertion
+    Dim lastRowSUM As Long
+    Dim categoryStartRow As Long
+    Dim categorySum As Double
+    Dim iSUM As Long
+    
+    ' Find the last row with data in column J
+    lastRowSUM = ws.Cells(ws.Rows.Count, "J").End(xlUp).Row
+    categoryStartRow = 1 ' Start with the first row
+    categorySum = 0
+    
+    ' Loop through the rows
+    For iSUM = 1 To lastRowSUM
+        If ws.Cells(iSUM, "J").Value = "" Then ' Found an empty row indicating a category break
+            If categorySum <> 0 Then ' Check if sum is not zero
+                ' Insert the sum in the first empty row below the category
+                ws.Cells(iSUM, "J").Value = categorySum
+                
+                ' Reset the category sum and update the category start row
+                categorySum = 0
+                categoryStartRow = iSUM + 1
+            End If
+        ElseIf IsNumeric(ws.Cells(iSUM, "J").Value) Then
+            ' Add the numeric value to the category sum
+            categorySum = categorySum + ws.Cells(iSUM, "J").Value
+        End If
+    Next iSUM
+    
+    ' Check if there's a sum left to insert after the loop (for the last category)
+    If categorySum <> 0 Then
+        ws.Cells(IIf(lastRowSUM = 1, lastRowSUM, lastRowSUM + 1), "J").Value = categorySum
+    End If
+    
+    'Delete Id Column
+    
+    Columns("G:G").Select
+    Selection.Delete Shift:=xlToLeft
+    
+    ' End of the macro
+    
+    
+End Sub
+
